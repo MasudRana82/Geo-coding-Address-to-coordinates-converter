@@ -1,0 +1,39 @@
+public function store(Request $req)
+    {
+        $user_id=Auth::user()->id;
+        // Get the address from the input field
+        $address = $req->address;
+
+        // Make a request to the Geocoding API to get coordinates
+        $apiKey = 'AIzaSyByXyFqFxtk5kp-lWcNagEm_BYY5JeiZSE'; // Replace with your API key
+        $response = Http::get("https://maps.googleapis.com/maps/api/geocode/json", [
+            'address' => $address,
+            'key' => $apiKey,
+        ]);
+
+        // Check if the API request was successful
+        if ($response->successful()) {
+            // Parse the response JSON to get the coordinates
+            $data = $response->json();
+            // dd(count($data['results']));
+            if(count($data['results'])===0){
+                return redirect('form')->with('error', 'Failed to convert address to coordinates. Give more accurate address.');
+            }
+            $location = $data['results'][0]['geometry']['location'];
+
+            // Save the data to the database
+            $data = new Address();
+            $data->user_id = $user_id;
+            $data->video_link = $req->video_link;
+            $data->address = $address;
+            $data->longitude = $location['lng'];
+            $data->latitude = $location['lat'];
+            
+            $data->save();
+
+            return redirect('dashboard')->with('success', 'Your data submitted successfully');
+        } else {
+            // Handle the case where the Geocoding API request failed
+            return redirect('form')->with('error', 'Failed to convert address to coordinates');
+        }
+    }
